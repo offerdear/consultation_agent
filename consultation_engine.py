@@ -505,6 +505,7 @@ class ConsultationSession:
         self.assessed_level = None
 
 
+
 # Assessment questions configuration
 ASSESSMENT_QUESTIONS = [
     {

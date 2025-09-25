@@ -1,14 +1,8 @@
 from typing import List, Tuple, Dict
 import os
 
+"""Store embeddings with metadata in the in-memory RAG system"""
 def store_embeddings_with_metadata(rag_system, chunk_tuples: List[Tuple[str, Dict]]):
-    """
-    Store embeddings with metadata in the in-memory RAG system
-    
-    Args:
-        rag_system: Instance of InMemoryRAG
-        chunk_tuples: List of (text, metadata) tuples
-    """
     if not chunk_tuples:
         print("⚠️ Warning: No chunks provided to store")
         return
@@ -23,19 +17,19 @@ def store_embeddings_with_metadata(rag_system, chunk_tuples: List[Tuple[str, Dic
     
     print(f"Storing {len(valid_chunks)} chunks with embeddings...")
     
-    # Use the batch method for efficiency
+    # Use batch method for efficiency
     doc_ids = rag_system.add_knowledge_batch(valid_chunks)
     
     print(f"✅ Successfully stored {len(doc_ids)} chunks in knowledge base")
     return doc_ids
 
+"""Clear all knowledge from the RAG system"""
 def clear_knowledge_base(rag_system):
-    """Clear all knowledge from the RAG system"""
     rag_system.clear_knowledge_base()
     print("✅ Knowledge base cleared")
 
+"""Statistics about knowledge base"""
 def get_knowledge_stats(rag_system):
-    """Get statistics about the knowledge base"""
     total_items = len(rag_system.knowledge_base)
     
     if total_items == 0:
@@ -60,8 +54,8 @@ def get_knowledge_stats(rag_system):
     print(f"  Categories: {len(categories)} - {dict(list(categories.items())[:5])}")
     print(f"  Types: {len(types)} - {dict(list(types.items())[:5])}")
 
+"""To create a backup of the knowledge base"""
 def backup_knowledge_base(rag_system, backup_path: str = "./backup"):
-    """Create a backup of the knowledge base"""
     import shutil
     import datetime
     
@@ -79,8 +73,8 @@ def backup_knowledge_base(rag_system, backup_path: str = "./backup"):
         print(f"❌ Backup failed: {e}")
         return None
 
+"""Restore knowledge base from a backup"""
 def restore_knowledge_base(rag_system, backup_path: str):
-    """Restore knowledge base from a backup"""
     import shutil
     
     if not os.path.exists(backup_path):
@@ -104,8 +98,8 @@ def restore_knowledge_base(rag_system, backup_path: str):
         print(f"❌ Restore failed: {e}")
         return False
 
+"""Search knowledge base by metadata only (no semantic search)"""
 def search_knowledge_by_metadata(rag_system, **metadata_filters) -> List[Dict]:
-    """Search knowledge base by metadata only (no semantic search)"""
     results = []
     
     for item in rag_system.knowledge_base:
@@ -127,8 +121,8 @@ def search_knowledge_by_metadata(rag_system, **metadata_filters) -> List[Dict]:
     
     return results
 
+"""Export knowledge base to JSON file"""
 def export_knowledge_to_json(rag_system, output_path: str):
-    """Export knowledge base to JSON file"""
     import json
     
     # Prepare data for JSON export (exclude embeddings for size)

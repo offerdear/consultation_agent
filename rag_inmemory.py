@@ -10,204 +10,6 @@ from consultation_engine import ConsultationEngine
 import re
 from openai import OpenAI
 
-
-class ConsultationManager:
-    """Simple consultation manager to track per-session consultation state.
-
-    This is intentionally lightweight. It tracks basic info collection, the
-    current stage, and stores answers to assessment questions.
-    """
-    def __init__(self):
-        # consultations keyed by session_id
-        self._consultations: Dict[str, Dict] = {}
-
-    def start_consultation(self, session_id: str) -> Dict:
-        consultation = {
-            'session_id': session_id,
-            'stage': 'basic_info',  # basic_info -> assessment_active -> recommendation -> completed
-            'data': {},
-            'assessment_index': 0,
-            'assessment_answers': [],
-            'created_at': datetime.now().isoformat()
-        }
-        self._consultations[session_id] = consultation
-        return consultation
-
-    def get_consultation(self, session_id: str) -> Optional[Dict]:
-        return self._consultations.get(session_id)
-
-    def process_basic_info(self, session_id: str, text: str) -> Tuple[str, bool]:
-        """Try to extract a name/age/level/goal from free-text and advance stage.
-
-        Returns a tuple (response_text, stage_complete_bool).
-        """
-        consultation = self._consultations.get(session_id)
-        if not consultation:
-            consultation = self.start_consultation(session_id)
-
-        data = consultation['data']
-
-        # Very simple extraction heuristics
-        text_lower = text.lower()
-        if 'name is' in text_lower or 'i am' in text_lower or 'my name' in text_lower:
-            # crude name extraction
-            parts = text.split()
-            if len(parts) >= 2:
-                data['name'] = parts[1].strip('.,')
-
-        # age
-        age_match = re.search(r"(\d{1,2})\s*(?:years|yrs|y/o|yo|old)", text_lower)
-        if age_match:
-            data['age'] = int(age_match.group(1))
-
-        # level keywords
-        for level in ['beginner', 'intermediate', 'advanced']:
-            if level in text_lower:
-                data['level'] = level
-
-        # goal
-        if 'improve' in text_lower or 'learn' in text_lower or 'practice' in text_lower:
-            data.setdefault('goals', []).append(text.strip())
-
-        # If user explicitly asks to start assessment or we have a level, move on
-        if 'start assessment' in text_lower or 'assessment' in text_lower or data.get('level'):
-            consultation['stage'] = 'assessment_active'
-            consultation['assessment_index'] = 0
-            self.assessment_engine.handle_assessment_question(user_input, session_id)
-            return ("Great — we'll begin a short language assessment now.", True)
-
-        # Otherwise ask a basic follow-up
-        prompt = "Thanks ${name} — could you tell me your (or your child's) current English level (beginner/intermediate/advanced) and a brief goal?"
-        return (prompt, False)
-
-
-class AssessmentEngine:
-    """Lightweight assessment engine that serves a fixed set of questions and scores them.
-
-    The real implementation would use validated assessment items. This placeholder
-    uses simple multiple-choice scoring to generate a level estimate.
-    """
-    def __init__(self):
-        # static question set
-        self.questions = [
-            { 'id': 'q1', 'question': 'Choose the sentence that is correct:\n1) He go to school.\n2) He goes to school.\n3) He going to school.', 'choices': [1,2,3] },
-            { 'id': 'q2', 'question': 'Select the best response: "How are you?"\n1) I am fine, thanks.\n2) Fine is me.\n3) Me fine.', 'choices': [1,2,3] },
-            { 'id': 'q3', 'question': 'Choose the correct past tense:\n1) I eat yesterday.\n2) I ate yesterday.\n3) I eated yesterday.', 'choices': [1,2,3] }
-        ]
-
-    def get_next_question(self, session_id: str, consultation: Dict) -> Optional[Dict]:
-        idx = consultation.get('assessment_index', 0)
-        if idx >= len(self.questions):
-            return None
-        q = self.questions[idx]
-        return { 'index': idx, 'question': q['question'], 'choices': q.get('choices') }
-
-    def process_answer(self, session_id: str, consultation: Dict, answer) -> Dict:
-        """Record answer and return next question or final result.
-
-        `answer` can be an integer index (1-based) or free text containing a number.
-        """
-        idx = consultation.get('assessment_index', 0)
-        if idx >= len(self.questions):
-            return { 'finished': True, 'result': self._compute_result(consultation) }
-
-        # Normalize answer
-        try:
-            if isinstance(answer, int):
-                selected = int(answer)
-            else:
-                # try to extract a number from text
-                m = re.search(r"(\d+)", str(answer))
-                selected = int(m.group(1)) if m else None
-        except Exception:
-            selected = None
-
-        consultation.setdefault('assessment_answers', []).append({ 'index': idx, 'answer': selected })
-        consultation['assessment_index'] = idx + 1
-
-        if consultation['assessment_index'] >= len(self.questions):
-            # finished
-            result = self._compute_result(consultation)
-            consultation['stage'] = 'recommendation'
-            return { 'finished': True, 'result': result }
-
-        # return next question
-        next_q = self.get_next_question(session_id, consultation)
-        return { 'finished': False, 'next_question': next_q }
-
-    def _compute_result(self, consultation: Dict) -> Dict:
-        """Very simple scoring: count correct answers (we treat choice '2' as correct in our sample set)."""
-        answers = consultation.get('assessment_answers', [])
-        score = 0
-        for a in answers:
-            if a.get('answer') == 2:
-                score += 1
-
-        # Map to proficiency
-        if score <= 1:
-            level = 'beginner'
-        elif score == 2:
-            level = 'intermediate'
-        else:
-            level = 'advanced'
-
-        consultation['assessment_result'] = { 'score': score, 'level': level }
-        return consultation['assessment_result']
-    
-    def handle_assessment_question(self, user_input: str, session_id: str) -> str:
-        """Process user input as an answer to the current assessment question."""
-        consultation = rag.consultation_manager.get_consultation(session_id)
-        if not consultation or consultation['stage'] != 'assessment_active':
-            return "No active assessment found. Please start a new consultation."
-
-        return "Next question placeholder"
-
-        result = self.process_answer(session_id, consultation, user_input)
-        if result['finished']:
-            res = result['result']
-            return f"Assessment complete! Your estimated level is '{res['level']}' with a score of {res['score']}. I'll now provide course recommendations."
-        else:
-            next_q = result['next_question']
-            return f"Next question:\n{next_q['question']}"
-
-
-class CourseRecommendationEngine:
-    """Simple rule-based recommendation engine.
-
-    Uses consultation data and assessment results to suggest courses.
-    """
-    def __init__(self):
-        # Example course catalog (would normally come from a DB)
-        self.catalog = {
-            'beginner': [
-                { 'id': 'beg-101', 'title': 'English Foundations', 'length_weeks': 8 },
-                { 'id': 'beg-201', 'title': 'Everyday English', 'length_weeks': 6 }
-            ],
-            'intermediate': [
-                { 'id': 'int-101', 'title': 'Grammar & Conversation', 'length_weeks': 10 },
-            ],
-            'advanced': [
-                { 'id': 'adv-101', 'title': 'Advanced Communication', 'length_weeks': 12 }
-            ]
-        }
-
-    def recommend(self, consultation: Dict) -> Dict:
-        result = consultation.get('assessment_result', {})
-        level = result.get('level') or consultation.get('data', {}).get('level') or 'beginner'
-
-        # pick top 2 courses for the level
-        courses = self.catalog.get(level, [])[:2]
-
-        recommendation = {
-            'level': level,
-            'recommended_courses': courses,
-            'reason': f"Recommended based on assessment level '{level}' and stated goals."
-        }
-        consultation['recommendation'] = recommendation
-        consultation['stage'] = 'recommendation'
-        return recommendation
-
-
 # Load environment variables
 load_dotenv()
 
@@ -236,13 +38,8 @@ class InMemoryRAG:
         # Create persist directory if it doesn't exist
         os.makedirs(persist_directory, exist_ok=True)
         
-        # Load persisted data if available
+        # Load persisted data if avail
         self.load_persisted_data()
-
-        # Add consultation components
-        self.consultation_manager = ConsultationManager()
-        self.assessment_engine = AssessmentEngine()
-        self.recommendation_engine = CourseRecommendationEngine()
     
         # New conversation modes
         self.conversation_mode = None  # 'faq' or 'consultation'
@@ -561,30 +358,6 @@ class InMemoryRAG:
         else:
             return "I can help you with either:\n\n**Consultation** - Get personalized course recommendations through an interactive assessment\n\n**FAQ** - Answer questions about our programs, pricing, teachers, etc.\n\nPlease select one of the options above to get started!"
 
-
-    def handle_consultation_flow(self, user_input: str, session_id: str):
-        """Handle structured consultation conversation"""
-        consultation = self.consultation_manager.get_consultation(session_id)
-        
-        if not consultation:
-            consultation = self.consultation_manager.start_consultation(session_id)
-        
-        stage = consultation['stage']
-        
-        while (stage != 'complete'):
-            if stage == 'basic_info':
-                response, stage_complete = self.consultation_manager.process_basic_info(session_id, user_input)
-            
-            elif stage == 'assessment_active':
-                self.assessment_engine.handle_assessment_question(user_input, session_id)
-            
-            elif stage == 'recommendation':
-                self.recommendation_engine.handle_course_recommendation(session_id)
-                stage = 'complete'
-            else:
-                continue
-        return "Consultation complete."      
-
     """Generate context-aware response with agentic behavior"""
     def generate_agentic_response_faq(self, user_input: str, category=None) -> str:
         
@@ -641,27 +414,6 @@ class InMemoryRAG:
         })
         
         return formatted_response
-    
-
-    """Analyze if user is in the middle of a diagnostic procedure"""
-    """??????"""
-    def _analyze_procedure_state(self, user_input: str, knowledge_items: List[Dict]) -> Optional[Dict]:
-        
-        # Look for diagnostic-related keywords in knowledge items
-        diagnostic_items = [item for item in knowledge_items
-                          if item['metadata'].get('type') in ['diagnostic_step', 'context_question', 'symptom']]
-        
-        if diagnostic_items:
-            # Check if there's an active procedure
-            procedures = set(item['metadata'].get('procedure') for item in diagnostic_items)
-            if procedures:
-                return {
-                    'active_procedures': list(procedures),
-                    'current_step_type': diagnostic_items[0]['metadata'].get('type'),
-                    'diagnostic_items': diagnostic_items
-                }
-        
-        return None
     
     """Build system prompt based on current context"""
     def _build_system_prompt(self, procedure_context: Optional[Dict]) -> str:

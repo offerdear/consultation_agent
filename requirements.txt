@@ -1,0 +1,10 @@
+flask
+pandas
+openai
+python-dotenv
+langchain-community
+langchain-openai
+PyMuPDF
+scikit-learn
+numpy
+unstructured

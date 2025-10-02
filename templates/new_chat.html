@@ -7,6 +7,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Dekko&&family=Mali:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
     <style>
+
+.mode-toggle {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #fcfcf7;
+            padding: 12px;
+            border-bottom: 2px solid #e5e5e0;
+            margin-bottom: 16px;
+        }
+        
+        .mode-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid #d4d4c8;
+            background: white;
+            color: #5a5a52;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .mode-btn:hover {
+            background: #f5f5f0;
+            border-color: #a39872;
+        }
+        
+        .mode-btn.active {
+            background: #A5D6A7;
+            border-color: #7cb77e;
+            color: #2d4a2f;
+        }
+
         .loading-dots {
             display: inline-block;
         }
@@ -51,10 +84,48 @@
             font-family: 'Mali';
         }
 
+            /* Add to existing styles */
+    .chat-button {
+        padding: 10px 16px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #5a5a52;
+        background: white;
+        border: 2px solid #d4d4c8;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-family: 'Mali', sans-serif;
+    }
+
+    .chat-button:hover {
+        background: #f5f5f0;
+        border-color: #a39872;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(163, 152, 114, 0.15);
+    }
+
+    .chat-button-primary {
+        background: #A5D6A7;
+        border-color: #7cb77e;
+        color: #2d4a2f;
+    }
+
     </style>
 </head>
 <body class="bg-[#fcfcf7] p-4">
     {% include "navbar.html" %}
+    <div class="mode-toggle" style="position: sticky; top: 0; z-index: 10; background: #fcfcf7; padding: 12px; border-bottom: 2px solid #e5e5e0; margin-bottom: 16px; border-radius: 8px;">
+        <div class="flex items-center justify-center gap-3">
+            <span class="text-sm text-gray-600 font-mali">Mode:</span>
+            <button id="mode-consultation" class="chat-button" onclick="switchMode('Consultation')">
+                📋 Consultation
+            </button>
+            <button id="mode-faq" class="chat-button" onclick="switchMode('FAQ')">
+                💬 FAQ
+            </button>
+        </div>
+    </div>
     <div class="max-w-2xl mx-auto h-200">
         <h1 class="text-3xl mt-8 mb-8 text-center text-[#A5D6A7]">Student Intake Assistant</h1>
         <div class="rounded-lg shadow-g p-4">
@@ -92,13 +163,48 @@
     </div>
 
     <script>
+        
+        function switchMode(newMode) {
+    // Prevent unnecessary switches
+    if (conversationMode === newMode) return;
+    
+    const oldMode = conversationMode;
+    conversationMode = newMode;
+    
+    // Update button states
+    document.querySelectorAll('#mode-consultation, #mode-faq').forEach(btn => {
+        btn.classList.remove('chat-button-primary');
+        btn.classList.add('chat-button');
+    });
+    
+    const activeBtn = document.getElementById(`mode-${newMode.toLowerCase()}`);
+    activeBtn.classList.remove('chat-button');
+    activeBtn.classList.add('chat-button-primary');
+    
+    // Clear any pending UI state
+    selectedCategory = '';
+    
+    // Add system message
+    if (oldMode) {
+        addMessage('System', `Switched from ${oldMode} to ${newMode} mode. Let's start fresh!`);
+    }
+    
+    // Initialize mode
+    if (newMode === 'FAQ') {
+        showCategoriesInNewMessage();
+    } else if (newMode === 'Consultation') {
+        addMessage('Assistant', "Let's get started with your consultation!");
+        startConsultation();
+    }
+}
+
+
+
         // Enhanced chatbot variables
         let modes = ["Consultation", "FAQ"]
         let chatCategories = ["Curriculum", "Pricing", "Teachers", "Textbooks", "More Info", "Contact", "Other"];
         let categoryFAQs = new Map(); // Map of category -> FAQ array
         let selectedCategory = '';
-        let isChatOpen = false;
-        let chatInitialized = false;
         let categories = new Set(chatCategories); // Global categories set
         let conversationMode = null; // 'faq' or 'consultation'
         let currentSessionId = null;
@@ -109,40 +215,34 @@
         // Initialize the application
         async function initializeApp() {
             try {
-                if (!chatInitialized) {
-                    await initializeChatbot();
-                    chatInitialized = true;
-                }
-            } catch (error) {
-                console.error('Failed to initialize app:', error);
-                if (document.getElementById('chat-messages')) {
-                    addMessage('System', 'Failed to load application. Please refresh the page.');
-                }
-            }
-        }
-       
-        // =================== ENHANCED CHATBOT FUNCTIONALITY ===================
-
-        // Initialize chatbot
-        async function initializeChatbot() {
-            try {
-                await loadChatCategories();
+                displayInitialOptions();
+                // await loadChatCategories();
                 setupChatEventListeners();
             } catch (error) {
-                console.error('Failed to initialize chatbot:', error);
-                addMessage('System', 'Failed to load categories. Please refresh the page.');
+                console.error('Failed to initialize app:', error);
+                addMessage('System', 'Failed to load application. Please refresh the page.');
             }
         }
 
+        function initializeFAQMode() {
+            addMessage('Assistant', "I'd be happy to answer your questions! Please select a topic:");
+            displayCategories();
+        }
+
+        function initializeConsultationMode() {
+            addMessage('Assistant', "Let's get started with your consultation!");
+            // Start consultation flow
+        }
+       
         // Setup chat event listeners
         function setupChatEventListeners() {
-            // Enter key to send message
+            const userInput = document.getElementById('user-input');
             userInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMessage();
             });
         }
 
-        // Load and display categories for chatbot
+        /** Load and display categories for chatbot
         async function loadChatCategories() {
             try {
                 // Use existing categories from knowledge base data 
@@ -175,7 +275,8 @@
                 throw error;
             }
         }
-
+        **/
+        
         // Display initial consultation options
         function displayInitialOptions() {
             const initialDiv = document.getElementById('initial-choices');
@@ -211,6 +312,9 @@
                     </button>
                 </div>
              **/
+
+            // Clear categories div (don't show anything yet)
+             document.getElementById('initial-categories').innerHTML = '';
         }
 
         // Display initial category selection buttons in chat
@@ -242,15 +346,16 @@
             
             // Clear initial choices
             document.getElementById('initial-choices').innerHTML = '';
-            document.getElementById('initial-categories').innerHTML = '';
+            // document.getElementById('initial-categories').innerHTML = '';
             
             if (mode === 'Consultation') {
                 addMessage('You', 'I would like a consultation');
                 startConsultation();
             } else if (mode === 'FAQ') {
                 addMessage('You', 'I have questions about your programs');
-                addMessage('Assistant', "I'd be happy to answer your questions! Please select which topic you're interested in:");
-                displayInitialChatCategories();
+                // addMessage('Assistant', "I'd be happy to answer your questions! Please select which topic you're interested in:");
+                //displayInitialChatCategories();
+                showCategories();
             }
         }
         /**function selectMode(mode) {
@@ -277,6 +382,24 @@
                 displayFAQCategories();
             }
         }**/
+
+        function showCategories() {
+            const categoriesHTML = `
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    ${chatCategories.map(category => `
+                        <button onclick="selectChatCategory('${category}')" 
+                                class="py-2 px-3 text-sm font-medium text-[#5a5a52] 
+                                    bg-white hover:bg-[#f5f5f0] 
+                                    border-2 border-[#d4d4c8] hover:border-[#a39872] 
+                                    rounded-lg transition-all">
+                            ${category}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            
+            addMessage('Assistant', "I'd be happy to answer your questions! Please select which topic you're interested in:", categoriesHTML);
+        }
 
         // Select category from button click (enhanced with FAQ flow)
         async function selectChatCategory(category) {
@@ -492,11 +615,12 @@
             let alignment = '';
             
             if (sender === 'You') {
-                senderClass = 'ml-8 border-r-4 border-2 border-[#a39872] text-[#736843] font-mali';
+                senderClass = 'ml-8 border-r-4 border-2 border-[#a39872] font-mali';
                 senderColor = '#736843';
                 alignment = 'self-end';
             } else if (sender === 'Assistant') {
-                senderClass = 'mr-8 border-l-4 border-2 border-[#A5D6A7] text-[#465c48] font-mali';
+                senderClass = 'mr-8 border-l-4 border-2 border-[#A5D6A7] font-mali';
+                senderColor = '#465c48';
                 alginment = 'self-start';
             } else if (sender === 'System') {
                 senderClass = 'bg-red-100 border-4 border-red-500';

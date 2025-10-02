@@ -12,10 +12,6 @@ venv/
 # macOS system files
 .DS_Store
 
-# Node modules
-node_modules/
-package-lock.json
-
 # Flask cache / session files
 instance/
 *.log

@@ -12,10 +12,6 @@ venv/
 # macOS system files
 .DS_Store
 
-# Uploads and user-generated content
-uploads/
-user_manuals/
-
 # Node modules
 node_modules/
 package-lock.json

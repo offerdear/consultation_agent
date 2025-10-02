@@ -10,16 +10,8 @@ from file_tracker import clear_processed_files
 from consultation_engine import ConsultationEngine
 import os
 
-
-api_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(api_dir)
-
-# Construct the absolute path to templates and static folders
-template_dir = os.path.join(project_root, 'templates')
-static_dir = os.path.join(project_root, 'static')
-
 # Tell Flask where to find the templates and static folders
-app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+app = Flask(__name__)
 
 # ... all your existing routes and logic follow here ...
 #app = Flask(__name__)
@@ -219,5 +211,5 @@ def clear_processed_files_route():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-#if __name__ == '__main__':
-#    app.run(debug=True, port=5000)
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)

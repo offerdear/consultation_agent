@@ -40,8 +40,13 @@ def allowed_file(filename):
 
 @app.route('/')
 def home():
-    # Redirect to chatbot since we don't need storefront
+    # Redirect to chatbot 
+    print("🔥 HOME ROUTE HIT!") # test
     return render_template('new_chat.html')
+
+@app.route('/health')
+def health():
+    return 'OK', 200
 
 @app.route('/upload', methods=['GET'])
 def upload_page():

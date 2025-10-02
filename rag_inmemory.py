@@ -382,11 +382,8 @@ class InMemoryRAG:
         print(f'📚 Found {len(knowledge_items)} knowledge items')
         print(f'💬 Found {len(context_history)} context items')
         
-        # Determine if this is part of a diagnostic procedure
-        procedure_context = self._analyze_procedure_state(user_input, knowledge_items)
-        
         # Build prompt with context
-        system_prompt = self._build_system_prompt(procedure_context)
+        system_prompt = self._build_system_prompt(context_history)
         user_prompt = self._build_user_prompt(user_input, context_history, knowledge_items)
         
         # Generate response
@@ -409,7 +406,6 @@ class InMemoryRAG:
         self.save_context(user_input, formatted_response, {
             "knowledge_items_used": len(knowledge_items),
             "context_items_used": len(context_history),
-            "procedure_active": bool(procedure_context),
             "selected_category": self.selected_category,
         })
         

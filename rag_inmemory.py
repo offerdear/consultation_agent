@@ -449,6 +449,7 @@ class InMemoryRAG:
             - Remember previous conversation details to avoid repetition
             - Give detailed, accurate and valuable information for them to make an informed decision
             - Use specifics when possible and give concrete names, examples, and details
+            - Include specific details and the names of our teachers, who have consented to share their information 
 
             **Communication Style:**
             - Use a warm, conversational tone (like talking to a friend, but professional)

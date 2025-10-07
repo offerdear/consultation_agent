@@ -33,6 +33,14 @@ if should_process_uploads():
 else:
     print("ℹ️  No files found in uploads folder to process")
 
+print(f"📁 Uploads folder absolute path: {os.path.abspath(app.config['UPLOAD_FOLDER'])}")
+print(f"📁 Folder exists: {os.path.exists(app.config['UPLOAD_FOLDER'])}")
+if os.path.exists(app.config['UPLOAD_FOLDER']):
+    files_found = os.listdir(app.config['UPLOAD_FOLDER'])
+    print(f"📁 Files in folder ({len(files_found)}): {files_found}")
+else:
+    print("📁 Folder does NOT exist!")
+
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx', 'rtf'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

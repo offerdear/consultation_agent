@@ -384,7 +384,7 @@ class InMemoryRAG:
         
          
         # Build prompt with context
-        system_prompt = self._build_system_prompt(context_history)
+        system_prompt = self._build_system_prompt(None)  # changed from context_history to None
         user_prompt = self._build_user_prompt(user_input, context_history, knowledge_items)
         
         # Generate response
@@ -413,7 +413,7 @@ class InMemoryRAG:
         return formatted_response
     
     """Build system prompt based on current context"""
-    def _build_system_prompt(self, procedure_context: Optional[Dict]) -> str:
+    def _build_system_prompt(self, procedure_context: Optional[Dict]=None) -> str:
         
         '''
         # Build product context
@@ -447,6 +447,8 @@ class InMemoryRAG:
             - Recommend appropriate course packages
             - Help with enrollment and next steps
             - Remember previous conversation details to avoid repetition
+            - Give detailed, accurate and valuable information for them to make an informed decision
+            - Use specifics when possible and give concrete names, examples, and details
 
             **Communication Style:**
             - Use a warm, conversational tone (like talking to a friend, but professional)
@@ -471,10 +473,9 @@ class InMemoryRAG:
             - Always end with a clear next step
 
             **When to escalate to human:**
-            - Complex scheduling conflicts
-            - Specific teacher requests
+            - Scheduling direct appointments 
             - Technical payment issues  
-            - Concerns about teaching quality
+            - Concerns about specific individuals or childrens' specific needs
             - Any question you're uncertain about
 
             **Remember:** 
@@ -488,16 +489,16 @@ class InMemoryRAG:
         # Add context
         base_prompt += categories_context
         
-        if procedure_context:
+        if procedure_context and isinstance(procedure_context, dict):
             base_prompt += f"""
-                ACTIVE DIAGNOSTIC CONTEXT:
-                - Currently working on: {', '.join(procedure_context['active_procedures'])}
-                - Current step type: {procedure_context['current_step_type']}
-                - Follow the diagnostic flow systematically
+                ACTIVE CONSULTATION CONTEXT:
+                - Currently working on: {', '.join(procedure_context.get('active_procedures', []))}
+                - Current step type: {procedure_context.get('current_step_type', 'unknown')}
+                - Follow the user flow systematically
                 - Ask context questions before proceeding with steps
-                - Guide the user through each verification step
+                - Guide the user through each question ro concern
             """
-        
+                
         return base_prompt
     
     """Build user prompt with relevant context and knowledge"""

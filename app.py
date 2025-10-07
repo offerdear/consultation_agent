@@ -27,19 +27,29 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Process existing files in uploads folder on startup
 if should_process_uploads():
-    print("🔄 Processing existing files in uploads folder...")
-    stats = process_existing_uploads(verbose=True)
+    print("📄 Processing existing files in uploads folder...")
+    # Pass the existing rag instance instead of creating a new one
+    from process_uploads import scan_uploads_folder, process_file, get_file_category
+    
+    files_to_process = scan_uploads_folder(app.config['UPLOAD_FOLDER'])
+    stats = {"processed": 0, "failed": 0}
+    
+    for file_path, filename in files_to_process:
+        category = get_file_category(filename, {
+            'curriculum': 'Curriculum',
+            'pricing': 'Pricing', 
+            'teacher': 'Teachers',
+            'general': 'General Information',
+        })
+        success = process_file(file_path, filename, category, rag)  # Use existing rag
+        if success:
+            stats["processed"] += 1
+        else:
+            stats["failed"] += 1
+    
     print(f"✅ Startup processing completed: {stats['processed']} files processed")
 else:
-    print("ℹ️  No files found in uploads folder to process")
-
-print(f"📁 Uploads folder absolute path: {os.path.abspath(app.config['UPLOAD_FOLDER'])}")
-print(f"📁 Folder exists: {os.path.exists(app.config['UPLOAD_FOLDER'])}")
-if os.path.exists(app.config['UPLOAD_FOLDER']):
-    files_found = os.listdir(app.config['UPLOAD_FOLDER'])
-    print(f"📁 Files in folder ({len(files_found)}): {files_found}")
-else:
-    print("📁 Folder does NOT exist!")
+    print("ℹ️ No need to process existing files")
 
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx', 'rtf'}
 def allowed_file(filename):

@@ -70,20 +70,28 @@ def should_process_uploads() -> bool:
     """
     uploads_path = "uploads"
     
+    print("In should_process_uploads")
+
     # Check if uploads folder exists
     if not os.path.exists(uploads_path):
+        print(f"📁 Uploads folder does NOT exist: {uploads_path}")
         return False
+    
+    print(f"Uploads folder exists {uploads_path}")
     
     # Get list of already processed files
     processed_files = get_processed_files()
-    
+    print(f"processed files {processed_files}")
     # Check for unprocessed supported files
     supported_extensions = {'.pdf', '.rtf', '.txt', '.docx'}
     
     for filename in os.listdir(uploads_path):
+        print(f"filename {filename}")
         if os.path.isfile(os.path.join(uploads_path, filename)):
             file_ext = os.path.splitext(filename)[1].lower()
+
             if file_ext in supported_extensions and filename not in processed_files:
+                print("File is supported and not processed")
                 return True
     
     return False
